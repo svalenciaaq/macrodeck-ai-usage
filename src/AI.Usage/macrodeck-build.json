@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "targets": {
+    "linux-x64": {
+      "executable": "dotnet",
+      "arguments": [
+        "publish",
+        "AI.Usage.csproj",
+        "-c",
+        "Release",
+        "-r",
+        "linux-x64",
+        "--self-contained",
+        "false",
+        "-p:UseAppHost=false",
+        "-o",
+        "bin/publish/linux-x64"
+      ],
+      "output": "bin/publish/linux-x64"
+    }
+  }
+}
