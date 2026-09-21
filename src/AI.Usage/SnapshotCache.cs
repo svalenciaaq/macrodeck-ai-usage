@@ -1,5 +1,13 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace AI.Usage;
 
+[SuppressMessage(
+    "Design",
+    "CA1001:Types that own disposable fields should be disposable",
+    Justification =
+        "SemaphoreSlim is used only for async coordination and its wait handle is never accessed."
+)]
 internal sealed class SnapshotCache<T>
     where T : class
 {

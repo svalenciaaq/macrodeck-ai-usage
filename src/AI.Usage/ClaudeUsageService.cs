@@ -154,28 +154,31 @@ internal sealed class ClaudeUsageService
             TimeSpan.FromSeconds(30)
         );
 
+        var startInfo =
+            new ProcessStartInfo
+            {
+                FileName = executable,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+        startInfo.ArgumentList.Add("-p");
+        startInfo.ArgumentList.Add("/usage");
+
+        using var process =
+            new Process
+            {
+                StartInfo = startInfo
+            };
+
+        var started = false;
+
         try
         {
-            var startInfo =
-                new ProcessStartInfo
-                {
-                    FileName = executable,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-            startInfo.ArgumentList.Add("-p");
-            startInfo.ArgumentList.Add("/usage");
-
-            using var process =
-                new Process
-                {
-                    StartInfo = startInfo
-                };
-
             process.Start();
+            started = true;
 
             var stdoutTask =
                 process.StandardOutput.ReadToEndAsync(
@@ -196,16 +199,12 @@ internal sealed class ClaudeUsageService
                 stderrTask
             );
 
-            if (process.ExitCode == 0)
-            {
-                _nextRemoteRefresh =
-                    DateTimeOffset.UtcNow.AddMinutes(5);
-            }
-            else
-            {
-                _nextRemoteRefresh =
-                    DateTimeOffset.UtcNow.AddMinutes(1);
-            }
+            _nextRemoteRefresh =
+                DateTimeOffset.UtcNow.AddMinutes(
+                    process.ExitCode == 0
+                        ? 5
+                        : 1
+                );
         }
         catch (OperationCanceledException)
             when (!cancellationToken.IsCancellationRequested)
@@ -213,10 +212,37 @@ internal sealed class ClaudeUsageService
             _nextRemoteRefresh =
                 DateTimeOffset.UtcNow.AddMinutes(1);
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch
         {
             _nextRemoteRefresh =
                 DateTimeOffset.UtcNow.AddMinutes(1);
+        }
+        finally
+        {
+            if (started)
+            {
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(
+                            entireProcessTree: true
+                        );
+
+                        await process.WaitForExitAsync(
+                            CancellationToken.None
+                        );
+                    }
+                }
+                catch
+                {
+                    // Best-effort cleanup during shutdown or process failure.
+                }
+            }
         }
     }
 
@@ -276,7 +302,7 @@ internal sealed class ClaudeUsageService
         );
     }
 
-    private static RateWindow? ParseWindow(
+    internal static RateWindow? ParseWindow(
         JsonElement utilization,
         string name,
         int windowMinutes)

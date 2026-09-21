@@ -64,23 +64,72 @@ internal sealed class GeminiUsageService
                 StartInfo = startInfo
             };
 
-        process.Start();
+        var started = false;
+        string stdout;
 
-        var stdout =
-            await process.StandardOutput
-                .ReadToEndAsync(timeout.Token);
-
-        await process.WaitForExitAsync(
-            timeout.Token
-        );
-
-        if (process.ExitCode != 0)
+        try
         {
-            return null;
+            process.Start();
+            started = true;
+
+            var stdoutTask =
+                process.StandardOutput.ReadToEndAsync(
+                    timeout.Token
+                );
+
+            var stderrTask =
+                process.StandardError.ReadToEndAsync(
+                    timeout.Token
+                );
+
+            await process.WaitForExitAsync(
+                timeout.Token
+            );
+
+            stdout = await stdoutTask;
+            _ = await stderrTask;
+
+            if (process.ExitCode != 0)
+            {
+                return null;
+            }
+        }
+        finally
+        {
+            if (started)
+            {
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(
+                            entireProcessTree: true
+                        );
+
+                        await process.WaitForExitAsync(
+                            CancellationToken.None
+                        );
+                    }
+                }
+                catch
+                {
+                    // Best-effort cleanup during shutdown or process failure.
+                }
+            }
         }
 
+        return Parse(
+            stdout,
+            DateTimeOffset.UtcNow
+        );
+    }
+
+    internal static GeminiUsageSnapshot? Parse(
+        string json,
+        DateTimeOffset fetchedAt)
+    {
         using var document =
-            JsonDocument.Parse(stdout);
+            JsonDocument.Parse(json);
 
         var root =
             document.RootElement;
@@ -199,8 +248,7 @@ internal sealed class GeminiUsageService
                         new RateWindow(
                             usedPercent,
                             300,
-                            resetTime
-                                .ToUnixTimeSeconds()
+                            resetTime.ToUnixTimeSeconds()
                         );
                 }
 
@@ -210,8 +258,7 @@ internal sealed class GeminiUsageService
                         new RateWindow(
                             usedPercent,
                             10080,
-                            resetTime
-                                .ToUnixTimeSeconds()
+                            resetTime.ToUnixTimeSeconds()
                         );
                 }
             }
@@ -227,10 +274,11 @@ internal sealed class GeminiUsageService
             return new GeminiUsageSnapshot(
                 fiveHour,
                 weekly,
-                DateTimeOffset.UtcNow
+                fetchedAt
             );
         }
 
         return null;
     }
+
 }

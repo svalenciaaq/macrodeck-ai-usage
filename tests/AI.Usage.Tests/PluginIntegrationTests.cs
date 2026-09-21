@@ -1,89 +1,167 @@
-using MacroDeck.Plugin.Testing;
+using MacroDeck.Sdk.Variables;
 using NUnit.Framework;
+using Serilog;
 
 namespace AI.Usage.Tests;
 
-/// <summary>
-/// Behaviour tests through <see cref="PluginTestHarness"/>: the plugin's own capability handlers run,
-/// but nothing crosses a socket. This is where you test what your integration does.
-/// </summary>
 [TestFixture]
 public sealed class PluginIntegrationTests
 {
-	private static PluginTestHarness CreateHarness() =>
-		PluginTestHarness.Create(builder => builder
-			.UseLocalization(Strings.LocalizationCatalog)
-			.RegisterIntegration<PluginIntegration>());
+    private static readonly string[] ExpectedVariableIds =
+    [
+        "codex-5h-card",
+        "codex-week-card",
+        "claude-5h-card",
+        "claude-week-card",
+        "gemini-5h-card",
+        "gemini-week-card"
+    ];
 
-	[Test]
-	public async Task The_plugin_builds_and_initializes()
-	{
-		await using var harness = CreateHarness();
+    private static readonly string[] ExpectedVariableNames =
+    [
+        "ai_usage_codex_5h_card",
+        "ai_usage_codex_week_card",
+        "ai_usage_claude_5h_card",
+        "ai_usage_claude_week_card",
+        "ai_usage_gemini_5h_card",
+        "ai_usage_gemini_week_card"
+    ];
 
-		Assert.DoesNotThrowAsync(harness.InitializeIntegrationsAsync);
-	}
+    private static PluginIntegration CreateIntegration(
+        out Serilog.Core.Logger logger)
+    {
+        logger =
+            new LoggerConfiguration()
+                .CreateLogger();
 
-	[Test]
-	public async Task The_example_action_writes_the_message_to_the_log()
-	{
-		await using var harness = CreateHarness();
-		await harness.InitializeIntegrationsAsync();
+        return new PluginIntegration(logger);
+    }
 
-		var outcome = await harness.Actions.ExecuteAsync(
-			"log-message",
-			new Dictionary<string, object?> { ["message"] = "Hello from a test" });
+    [Test]
+    public void The_plugin_exposes_no_actions()
+    {
+        var integration =
+            CreateIntegration(out var logger);
 
-		Assert.That(outcome.Succeeded, Is.True);
-		Assert.That(harness.Logs.Events.Any(e => e.Message.Contains("Hello from a test")), Is.True);
-	}
+        using (logger)
+        {
+            Assert.That(
+                integration.Actions,
+                Is.Empty
+            );
+        }
+    }
 
-	[Test]
-	public async Task The_example_action_fails_when_the_message_is_blank()
-	{
-		await using var harness = CreateHarness();
-		await harness.InitializeIntegrationsAsync();
+    [Test]
+    public void The_plugin_exposes_exactly_six_variables()
+    {
+        var integration =
+            CreateIntegration(out var logger);
 
-		var outcome = await harness.Actions.ExecuteAsync(
-			"log-message",
-			new Dictionary<string, object?> { ["message"] = "   " });
+        using (logger)
+        {
+            Assert.That(
+                integration.Variables,
+                Has.Count.EqualTo(6)
+            );
+        }
+    }
 
-		Assert.That(outcome.Succeeded, Is.False);
-	}
-}
+    [Test]
+    public void The_plugin_exposes_the_expected_variable_ids()
+    {
+        var integration =
+            CreateIntegration(out var logger);
 
-/// <summary>
-/// The localization set is generated from <c>Localization/*.resx</c>, so these guard the wiring rather
-/// than any wording: a missing catalog registration leaves every label showing its raw key.
-/// </summary>
-[TestFixture]
-public sealed class LocalizationTests
-{
-	[Test]
-	public void The_catalog_is_scoped_to_the_plugin_id()
-	{
-		Assert.That(Strings.LocalizationCatalog.Scope, Is.EqualTo("plugin:com.svalencia.ai-usage"));
-	}
+        using (logger)
+        {
+            var ids =
+                integration.Variables
+                    .Select(variable => variable.Id)
+                    .ToArray();
 
-	[Test]
-	public void English_is_the_default_culture()
-	{
-		Assert.That(Strings.LocalizationCatalog.DefaultCulture, Is.EqualTo("en"));
-		Assert.That(Strings.LocalizationCatalog.Cultures, Does.Contain("en"));
-	}
+            Assert.That(
+                ids,
+                Is.EquivalentTo(ExpectedVariableIds)
+            );
+        }
+    }
 
-	[Test]
-	public void The_action_strings_come_from_the_catalog()
-	{
-		Assert.That(Strings.LocalizationCatalog.KeysOf("en"), Does.Contain("Actions.LogMessage.Name"));
-	}
+    [Test]
+    public void The_plugin_exposes_the_expected_variable_names()
+    {
+        var integration =
+            CreateIntegration(out var logger);
 
-	[Test]
-	public void Every_key_the_default_culture_declares_resolves_to_text()
-	{
-		foreach (var key in Strings.LocalizationCatalog.KeysOf("en"))
-		{
-			Assert.That(Strings.LocalizationCatalog.TryGetTemplate("en", key, out var text), Is.True);
-			Assert.That(text, Is.Not.Empty);
-		}
-	}
+        using (logger)
+        {
+            var names =
+                integration.Variables
+                    .Select(variable => variable.Name)
+                    .ToArray();
+
+            Assert.That(
+                names,
+                Is.EquivalentTo(ExpectedVariableNames)
+            );
+        }
+    }
+
+    [Test]
+    public void All_variables_are_text_variables()
+    {
+        var integration =
+            CreateIntegration(out var logger);
+
+        using (logger)
+        {
+            Assert.That(
+                integration.Variables.All(
+                    variable =>
+                        variable.Type == VariableType.Text
+                ),
+                Is.True
+            );
+        }
+    }
+
+    [Test]
+    public void Variable_ids_are_unique()
+    {
+        var integration =
+            CreateIntegration(out var logger);
+
+        using (logger)
+        {
+            var ids =
+                integration.Variables
+                    .Select(variable => variable.Id)
+                    .ToArray();
+
+            Assert.That(
+                ids.Distinct().Count(),
+                Is.EqualTo(ids.Length)
+            );
+        }
+    }
+
+    [Test]
+    public void Variable_names_are_unique()
+    {
+        var integration =
+            CreateIntegration(out var logger);
+
+        using (logger)
+        {
+            var names =
+                integration.Variables
+                    .Select(variable => variable.Name)
+                    .ToArray();
+
+            Assert.That(
+                names.Distinct().Count(),
+                Is.EqualTo(names.Length)
+            );
+        }
+    }
 }

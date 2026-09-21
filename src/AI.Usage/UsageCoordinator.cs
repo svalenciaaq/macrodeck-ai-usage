@@ -1,7 +1,18 @@
+using System.Diagnostics.CodeAnalysis;
+using Serilog;
+
 namespace AI.Usage;
 
+[SuppressMessage(
+    "Design",
+    "CA1001:Types that own disposable fields should be disposable",
+    Justification =
+        "The CancellationTokenSource is created by StartAsync and disposed by StopAsync during integration shutdown."
+)]
 internal sealed class UsageCoordinator
 {
+    private readonly ILogger _logger;
+
     private readonly CodexUsageService _codexService = new();
     private readonly ClaudeUsageService _claudeService = new();
     private readonly GeminiUsageService _geminiService = new();
@@ -13,6 +24,15 @@ internal sealed class UsageCoordinator
     private CancellationTokenSource? _cts;
     private Task? _loop;
 
+    private bool _codexFailed;
+    private bool _claudeFailed;
+    private bool _geminiFailed;
+
+    public UsageCoordinator(ILogger logger)
+    {
+        _logger = logger.ForContext<UsageCoordinator>();
+    }
+
     public async Task StartAsync(
         CancellationToken cancellationToken = default)
     {
@@ -21,12 +41,7 @@ internal sealed class UsageCoordinator
             return;
         }
 
-        /*
-         * Carga inicial.
-         *
-         * No devolvemos el control a Macro Deck hasta intentar
-         * obtener los tres snapshots.
-         */
+        // Load the initial snapshots before exposing the integration.
         await RefreshClaudeAsync(cancellationToken);
         await RefreshCodexAsync(cancellationToken);
         await RefreshGeminiAsync(cancellationToken);
@@ -88,10 +103,6 @@ internal sealed class UsageCoordinator
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            /*
-             * El primer snapshot ya fue cargado en StartAsync.
-             * Esperamos antes del siguiente ciclo.
-             */
             await Task.Delay(
                 TimeSpan.FromSeconds(30),
                 cancellationToken
@@ -125,21 +136,38 @@ internal sealed class UsageCoordinator
                     cancellationToken
                 );
 
-            if (value is not null)
+            if (value is null)
             {
-                Volatile.Write(
-                    ref _claude,
-                    value
+                MarkFailure(
+                    ref _claudeFailed,
+                    "Claude"
                 );
+
+                return;
             }
+
+            Volatile.Write(
+                ref _claude,
+                value
+            );
+
+            MarkRecovery(
+                ref _claudeFailed,
+                "Claude"
+            );
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
-        catch
+        catch (Exception ex)
         {
+            MarkFailure(
+                ref _claudeFailed,
+                "Claude",
+                ex
+            );
         }
     }
 
@@ -153,21 +181,38 @@ internal sealed class UsageCoordinator
                     cancellationToken
                 );
 
-            if (value is not null)
+            if (value is null)
             {
-                Volatile.Write(
-                    ref _codex,
-                    value
+                MarkFailure(
+                    ref _codexFailed,
+                    "Codex"
                 );
+
+                return;
             }
+
+            Volatile.Write(
+                ref _codex,
+                value
+            );
+
+            MarkRecovery(
+                ref _codexFailed,
+                "Codex"
+            );
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
-        catch
+        catch (Exception ex)
         {
+            MarkFailure(
+                ref _codexFailed,
+                "Codex",
+                ex
+            );
         }
     }
 
@@ -181,21 +226,84 @@ internal sealed class UsageCoordinator
                     cancellationToken
                 );
 
-            if (value is not null)
+            if (value is null)
             {
-                Volatile.Write(
-                    ref _gemini,
-                    value
+                MarkFailure(
+                    ref _geminiFailed,
+                    "Gemini"
                 );
+
+                return;
             }
+
+            Volatile.Write(
+                ref _gemini,
+                value
+            );
+
+            MarkRecovery(
+                ref _geminiFailed,
+                "Gemini"
+            );
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
-        catch
+        catch (Exception ex)
         {
+            MarkFailure(
+                ref _geminiFailed,
+                "Gemini",
+                ex
+            );
         }
+    }
+
+    private void MarkFailure(
+        ref bool failed,
+        string provider,
+        Exception? exception = null)
+    {
+        if (failed)
+        {
+            return;
+        }
+
+        failed = true;
+
+        if (exception is null)
+        {
+            _logger.Warning(
+                "{Provider} usage refresh returned no data. Keeping the last valid snapshot.",
+                provider
+            );
+
+            return;
+        }
+
+        _logger.Warning(
+            exception,
+            "{Provider} usage refresh failed. Keeping the last valid snapshot.",
+            provider
+        );
+    }
+
+    private void MarkRecovery(
+        ref bool failed,
+        string provider)
+    {
+        if (!failed)
+        {
+            return;
+        }
+
+        failed = false;
+
+        _logger.Information(
+            "{Provider} usage refresh recovered.",
+            provider
+        );
     }
 }

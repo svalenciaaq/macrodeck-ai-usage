@@ -3,8 +3,8 @@
   "manifestVersion": 1,
   "id": "com.svalencia.ai-usage",
   "name": "AI Usage",
-  "version": "1.0.1",
-  "description": "A Macro Deck plugin.",
+  "version": "1.0.2",
+  "description": "Monitor Codex, Claude Code, and Gemini usage directly from Macro Deck.",
   "icon": "Assets/icon.svg",
   "entrypoints": {
     "linux-x64": {

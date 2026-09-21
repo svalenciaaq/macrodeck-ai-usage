@@ -173,3 +173,5 @@ artifacts/
 
 # Temporary secrets/config
 secrets.json
+# Local manual backups
+*.backup-*

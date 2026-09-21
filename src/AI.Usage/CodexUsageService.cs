@@ -66,7 +66,10 @@ internal sealed class CodexUsageService
             return null;
         }
 
-        _ = process.StandardError.ReadToEndAsync();
+        var stderrTask =
+            process.StandardError.ReadToEndAsync(
+                CancellationToken.None
+            );
 
         try
         {
@@ -76,7 +79,9 @@ internal sealed class CodexUsageService
                 """
             );
 
-            await process.StandardInput.FlushAsync();
+            await process.StandardInput.FlushAsync(
+                timeout.Token
+            );
 
             var initializeResponse =
                 await ReadResponseAsync(process, 1, timeout.Token);
@@ -98,7 +103,9 @@ internal sealed class CodexUsageService
                 """
             );
 
-            await process.StandardInput.FlushAsync();
+            await process.StandardInput.FlushAsync(
+                timeout.Token
+            );
 
             var response =
                 await ReadResponseAsync(process, 2, timeout.Token);
@@ -116,11 +123,27 @@ internal sealed class CodexUsageService
             {
                 if (!process.HasExited)
                 {
-                    process.Kill(entireProcessTree: true);
+                    process.Kill(
+                        entireProcessTree: true
+                    );
+
+                    await process.WaitForExitAsync(
+                        CancellationToken.None
+                    );
                 }
             }
             catch
             {
+                // Best-effort cleanup during shutdown or process failure.
+            }
+
+            try
+            {
+                await stderrTask;
+            }
+            catch
+            {
+                // stderr is diagnostic only.
             }
         }
     }
@@ -161,7 +184,7 @@ internal sealed class CodexUsageService
         }
     }
 
-    private static CodexUsageSnapshot? Parse(JsonElement response)
+    internal static CodexUsageSnapshot? Parse(JsonElement response)
     {
         if (!response.TryGetProperty("result", out var result))
         {
