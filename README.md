@@ -10,6 +10,10 @@ AI Usage is a Macro Deck 3 plugin for monitoring usage limits from:
 
 It exposes compact usage cards that can be placed directly on Macro Deck buttons.
 
+## Preview
+
+![AI Usage running in Macro Deck](docs/images/macrodeck-ai-usage.png)
+
 ## Features
 
 - 5 hour usage window
