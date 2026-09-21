@@ -19,25 +19,29 @@ concurrency:
 jobs:
   build-and-test:
     name: Build and test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
-
-      - name: Show .NET information
-        run: dotnet --info
 
       - name: Restore dependencies
         run: dotnet restore AI.Usage.slnx
 
       - name: Build
-        run: dotnet build AI.Usage.slnx --configuration Release --no-restore
+        run: >
+          dotnet build AI.Usage.slnx
+          --configuration Release
+          --no-restore
+          --warnaserror
 
       - name: Run tests
-        run: dotnet test AI.Usage.slnx --configuration Release --no-build
+        run: >
+          dotnet test AI.Usage.slnx
+          --configuration Release
+          --no-build

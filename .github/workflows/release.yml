@@ -1,0 +1,135 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and release
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Validate release version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+
+          MANIFEST_VERSION="$(
+            python3 -c 'import json; print(json.load(open("src/AI.Usage/manifest.json"))["version"])'
+          )"
+
+          echo "Tag version:      $TAG_VERSION"
+          echo "Manifest version: $MANIFEST_VERSION"
+
+          if [ "$TAG_VERSION" != "$MANIFEST_VERSION" ]; then
+            echo "::error::Tag version does not match manifest version."
+            exit 1
+          fi
+
+      - name: Restore dependencies
+        run: dotnet restore AI.Usage.slnx
+
+      - name: Build
+        run: >
+          dotnet build AI.Usage.slnx
+          --configuration Release
+          --no-restore
+          --warnaserror
+
+      - name: Run tests
+        run: >
+          dotnet test AI.Usage.slnx
+          --configuration Release
+          --no-build
+
+      - name: Install Macro Deck Plugin CLI
+        run: >
+          dotnet tool install
+          --global
+          macrodeck.plugin.cli
+          --version 3.0.0-beta.11
+
+      - name: Build plugin package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf artifacts
+          mkdir -p artifacts
+
+          "$HOME/.dotnet/tools/macrodeck-plugin" build \
+            --source src/AI.Usage \
+            --rid linux-x64 \
+            --output ./artifacts \
+            --force
+
+      - name: Validate plugin package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          PACKAGE="$(
+            find artifacts \
+              -maxdepth 1 \
+              -type f \
+              -name "*${VERSION}*.macroDeckPlugin" \
+              -print \
+              -quit
+          )"
+
+          if [ -z "$PACKAGE" ]; then
+            echo "::error::Plugin package was not generated."
+            exit 1
+          fi
+
+          echo "Package: $PACKAGE"
+
+          "$HOME/.dotnet/tools/macrodeck-plugin" validate \
+            --artifact "$PACKAGE"
+
+          "$HOME/.dotnet/tools/macrodeck-plugin" inspect \
+            --artifact "$PACKAGE"
+
+          sha256sum "$PACKAGE" > "${PACKAGE}.sha256"
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          PACKAGE="$(
+            find artifacts \
+              -maxdepth 1 \
+              -type f \
+              -name "*${VERSION}*.macroDeckPlugin" \
+              -print \
+              -quit
+          )"
+
+          gh release create "$GITHUB_REF_NAME" \
+            "$PACKAGE" \
+            "${PACKAGE}.sha256" \
+            --verify-tag \
+            --title "AI Usage ${VERSION}" \
+            --generate-notes
