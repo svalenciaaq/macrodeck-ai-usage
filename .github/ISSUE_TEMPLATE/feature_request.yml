@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest an improvement for AI Usage
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What problem would this change solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior or capability you would like to add.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. Describe other approaches you considered.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Area
+      options:
+        - Macro Deck variables
+        - Codex integration
+        - Claude Code integration
+        - Gemini integration
+        - Packaging or platform support
+        - Documentation
+        - Other
+    validations:
+      required: true

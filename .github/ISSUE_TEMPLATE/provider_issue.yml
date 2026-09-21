@@ -1,0 +1,78 @@
+name: Provider integration issue
+description: Report a Codex, Claude Code, or Gemini integration problem
+title: "[Provider]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Provider CLIs can change independently of AI Usage. Include versions and sanitized output when possible.
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - OpenAI Codex
+        - Anthropic Claude Code
+        - Google Gemini via Antigravity
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: AI Usage version
+      placeholder: "1.0.2"
+    validations:
+      required: true
+
+  - type: input
+    id: cli-version
+    attributes:
+      label: Provider CLI version
+    validations:
+      required: true
+
+  - type: input
+    id: macrodeck-version
+    attributes:
+      label: Macro Deck version
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+    validations:
+      required: true
+
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: Describe the incorrect usage value, timeout, unavailable state, or parsing problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Sanitized CLI or plugin output
+      description: Do not paste complete provider configuration files or authentication material.
+      render: shell
+
+  - type: checkboxes
+    id: sensitive-data
+    attributes:
+      label: Sensitive data check
+      options:
+        - label: I removed credentials, tokens, cookies, and private account information from this report.
+          required: true

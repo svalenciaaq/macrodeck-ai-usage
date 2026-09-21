@@ -1,5 +1,7 @@
 # AI Usage for Macro Deck
 
+[![CI](https://github.com/svalenciaaq/macrodeck-ai-usage/actions/workflows/ci.yml/badge.svg)](https://github.com/svalenciaaq/macrodeck-ai-usage/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/svalenciaaq/macrodeck-ai-usage)](https://github.com/svalenciaaq/macrodeck-ai-usage/releases/latest) [![License](https://img.shields.io/github/license/svalenciaaq/macrodeck-ai-usage)](LICENSE) [![Platform](https://img.shields.io/badge/platform-Linux%20x64-blue)](#platform-support) [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
+
 AI Usage is a Macro Deck 3 plugin for monitoring usage limits from:
 
 - OpenAI Codex
@@ -337,24 +339,17 @@ The current architecture prioritizes:
 
 ## Contributing
 
-Issues, bug reports, and pull requests are welcome.
+Contributions, bug reports, and feature requests are welcome.
 
-When reporting a provider related issue, include:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing requirements, provider integration rules, and pull request guidance.
 
-- Operating system
-- Macro Deck version
-- AI Usage plugin version
-- Relevant CLI version
-- Relevant error output
+Use the repository issue forms for bug reports, provider integration problems, and feature requests.
 
-Do not include:
+## Security
 
-- Access tokens
-- API keys
-- Passwords
-- Authentication cookies
-- Private account information
-- Full provider configuration files containing sensitive information
+Please read [SECURITY.md](SECURITY.md) before reporting a vulnerability or sharing diagnostic information.
+
+Never include access tokens, API keys, passwords, authentication cookies, or complete provider configuration files in public issues.
 
 ## Disclaimer
 

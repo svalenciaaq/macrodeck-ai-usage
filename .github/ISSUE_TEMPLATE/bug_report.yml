@@ -1,0 +1,85 @@
+name: Bug report
+description: Report a reproducible problem with AI Usage
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Remove credentials and private account information from all logs before submitting.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Macro Deck integration
+        - Codex
+        - Claude Code
+        - Gemini via Antigravity
+        - Packaging or installation
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: AI Usage version
+      placeholder: "1.0.2"
+    validations:
+      required: true
+
+  - type: input
+    id: macrodeck-version
+    attributes:
+      label: Macro Deck version
+      placeholder: "3.0.0-beta.11"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "Ubuntu 24.04 x64"
+    validations:
+      required: true
+
+  - type: input
+    id: cli-version
+    attributes:
+      label: Relevant provider CLI version
+      description: Leave blank if the problem is not provider-specific.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem
+      description: Describe what happened and what you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start Macro Deck
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Remove tokens, cookies, account identifiers, and private configuration before pasting logs.
+      render: shell
+
+  - type: checkboxes
+    id: sensitive-data
+    attributes:
+      label: Sensitive data check
+      options:
+        - label: I removed credentials, tokens, cookies, and private account information from this report.
+          required: true
