@@ -45,3 +45,56 @@ jobs:
           dotnet test AI.Usage.slnx
           --configuration Release
           --no-build
+
+      - name: Install Macro Deck Plugin CLI
+        run: >
+          dotnet tool install
+          --global
+          macrodeck.plugin.cli
+          --version 3.0.0-preview.10
+
+      - name: Prepare artifacts directory
+        run: mkdir -p artifacts
+
+      - name: Run Macro Deck conformance tests
+        run: >
+          "$HOME/.dotnet/tools/macrodeck-plugin" test
+          --project src/AI.Usage/AI.Usage.csproj
+          --report markdown
+          --output artifacts/conformance.md
+
+      - name: Build plugin package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          "$HOME/.dotnet/tools/macrodeck-plugin" build \
+            --source src/AI.Usage \
+            --rid linux-x64 \
+            --output ./artifacts \
+            --force
+
+      - name: Validate plugin for publication
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PACKAGE="$(
+            find artifacts \
+              -maxdepth 1 \
+              -type f \
+              -name '*.macroDeckPlugin' \
+              -print \
+              -quit
+          )"
+
+          if [ -z "$PACKAGE" ]; then
+            echo "::error::Plugin package was not generated."
+            exit 1
+          fi
+
+          echo "Package: $PACKAGE"
+
+          "$HOME/.dotnet/tools/macrodeck-plugin" validate \
+            --level publication \
+            --artifact "$PACKAGE"
